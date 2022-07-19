@@ -26,7 +26,7 @@ fn make_url(url: &str) -> String{
     url
 }
 
-pub fn get(url: &str,  mut optionals: Option<HashMap<&str, HashMap<&str, &str>>>) -> std::io::Result<()>{
+pub fn get(url: &str,  mut optionals: Option<HashMap<&str, HashMap<&str, &str>>>, content_size: usize) -> std::io::Result<()>{
     let url = make_url(url);
     let headers = if optionals.is_some(){
         optionals.as_mut().unwrap().remove("headers")
@@ -37,9 +37,10 @@ pub fn get(url: &str,  mut optionals: Option<HashMap<&str, HashMap<&str, &str>>>
     let (host, path) = work_on_url(url);
     let mut stream = TcpStream::connect(host)?;
     stream.write(write_message(host,path, headers).as_bytes())?;
-    let mut a = [0u8; 1024];
-    stream.read(&mut a)?;
-    let b = String::from_utf8(a.to_vec()).unwrap();
+    let mut a = Vec::with_capacity(content_size);
+    stream.read(&mut *a)?;
+    println!("{:?}", a);
+    let b = String::from_utf8(a).unwrap();
     println!("{}",b);
     Ok(())
 }
@@ -48,11 +49,10 @@ fn write_message(host: &str, path: &str, optionals: Option<HashMap<&str, &str>>)
     let mut message = String::new();
     message.push_str(&*format!("GET {} HTTP/1.1\nHost: {}\n",path, host));
     if optionals.is_none() {
-        message.push_str(&*format!("User-Agent: summon/test\nAccept-Encoding: gzip, deflate\nAccept: */*\nConnection: keep-alive\n\n"));
+        message.push_str("User-Agent: summon/test\nAccept-Encoding: gzip, deflate\nAccept: */*\nConnection: keep-alive\n\n");
     }else{
         let mut map = optionals.unwrap();
         let keys = map.keys().cloned().map(|s| (s.to_lowercase(), s)).collect::<Vec<_>>();
-        println!("{:?}",keys);
         let params = ["user-agent", "accept-encoding", "accept", "connection"];
         for i in params {
             let a = keys
@@ -63,16 +63,16 @@ fn write_message(host: &str, path: &str, optionals: Option<HashMap<&str, &str>>)
             } else {
                 match i {
                     "user-agent" => {
-                        message.push_str(&*format!("User-Agent: summon/test\n"))
+                        message.push_str("User-Agent: summon/test\n")
                     },
                     "accept-encoding" => {
-                        message.push_str(&*format!("Accept-Encoding: gzip, deflate\n"))
+                        message.push_str("Accept-Encoding: gzip, deflate\n")
                     },
                     "accept" => {
-                        message.push_str(&*format!("Accept: */*\n"))
+                        message.push_str("Accept: */*\n")
                     },
                     "connection" => {
-                        message.push_str(&*format!("Connection: keep-alive\n"))
+                        message.push_str("Connection: keep-alive\n")
                     },
                     _ => {}
                 }
@@ -110,7 +110,7 @@ fn url(){
         [("accept", "image/jpeg")]
     );
     let b = HashMap::from([("headers",a) ]);
-    match get("http://httpbin.org/image", Some(b)) {
+    match get("http://httpbin.org/image", Some(b), 4096) {
         Ok(_) => {},
         Err(e) => println!("{:?}",e)
     }
@@ -126,7 +126,7 @@ fn localhost(){
         ],  
     );
     let b = HashMap::from([("headers",headers) ]);
-    match get("localhost:27015/image", Some(b)) {
+    match get("localhost:27015/image", Some(b), 1024) {
         Ok(_) => {},
         Err(e) => println!("{:?}",e)
     }
@@ -135,7 +135,7 @@ fn localhost(){
 
 #[test]
 fn modify() {
-    match get("https://www.google.com/k", None) {
+    match get("https://www.google.com/k", None, 1024) {
         Ok(_) => println!("Everything was cool."),
         Err(_) => println!("errr!")
     }

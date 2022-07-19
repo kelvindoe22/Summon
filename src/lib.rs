@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 
 pub struct _Response {
-    status_code: usize, 
-    content: String,
-    headers: HashMap<String, String>,
+    _status_code: usize, 
+    _content: String,
+    _headers: HashMap<String, String>,
 }
